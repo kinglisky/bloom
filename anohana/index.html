@@ -87,7 +87,7 @@ img {
       var colorList3 = [
         '#f2e1c7', '#f9e7c3', '#fdd6af',
         '#fadcb6', '#e9b8ae', '#f7bcda',
-        '#eb7bcf'
+        '#eb7bcf', '#d82066'
       ]
 
       var colorList4 = [
@@ -111,7 +111,7 @@ img {
       }
 
       // 画板的宽度高度、 坐标、半径、花瓣的数量
-      function Flower (cw, ch, radius, colors, alpha, vy) {
+      function Flower (cw, ch, radius, colors, alpha, vy, vr) {
         var count = 5
         var halfRadius = radius / 2
         var cacheCanvas = document.createElement('canvas')
@@ -122,6 +122,7 @@ img {
         this.y = random() * ch + halfRadius
         this.vy = vy
         this.vx = random() * 1 - 0.5
+        this.vr = vr
         this.cw = cw
         this.ch = ch
         this.alpha = alpha
@@ -217,12 +218,12 @@ img {
 
       // 更新路径判断边界
       Flower.prototype.update = function update () {
-        if (!this.vertical && this.scale >= 0.8) {
-          this.scale -= 0.001
+        if (!this.vertical && this.scale >= 0.9) {
+          this.scale *= 0.99
           return
         }
         var halfRadius = this.halfRadius + 10
-        this.rotate += .02 * this.vertical
+        this.rotate += this.vr * this.vertical
         this.x += this.vx * this.vertical
         this.y += this.vy * this.vertical
         if (this.x < -halfRadius || this.x > this.cw + halfRadius) {
@@ -241,6 +242,7 @@ img {
         var size = options.size
         var alpha = options.alpha
         var vy = options.vy
+        var vr = options.vr
         var colors1 = options.colors1
         var colors2 = options.colors2
         var flowers = []
@@ -248,22 +250,27 @@ img {
           var rsize = (random() * (size.max - size.min) + size.min) | 1
           var ralpha = random() * (alpha.max - alpha.min) + alpha.min
           var rvy = random() * (vy.max - vy.min) + vy.min
+          var rvr = random() * (vr.max - vr.min) + vr.min
           var colors = [getRandomColor(colors1), getRandomColor(colors2)]
-          flowers.push(new Flower(VW, VH, rsize, colors, ralpha, rvy))
+          flowers.push(new Flower(VW, VH, rsize, colors, ralpha, rvy, rvr))
         }
-        this.zoomTranslate = false
+        // var scale = 2
+        this.zoomTransform = false
         this.context = context
         this.flowers = flowers
+        // this.scale = scale
+        // this.context.scale(scale, scale)
       }
 
       Layer.prototype.zoom = function boom () {
-        this.zoomTranslate = true
+        // this.zoomTransform = true
         this.flowers.forEach(flower => {
           flower.zoom()
         })
       }
 
       Layer.prototype.reverse = function reverse () {
+        // this.zoomTransform = false
         this.flowers.forEach(flower => {
           flower.reverse()
         })
@@ -277,16 +284,18 @@ img {
       }
 
       Layer.prototype.clear = function clear () {
+        // if (this.zoomTransform) return
         this.context.clearRect(0, 0, VW, VH)
       }
 
       var layers = [
         {
           ctx: context1,
-          count: 2000,
+          count: 1000, // 2000 个在其他浏览器上比较卡，推荐 chrome 
           size: { max: 20, min: 4 },
           alpha: { max: 0.6, min: 0.2 },
           vy: { max: 4, min: 2 },
+          vr: { max: 0.04, min: 0.01 },
           colors1: colorList1,
           colors2: colorList3
         },
@@ -296,6 +305,7 @@ img {
           size: { max: 30, min: 10 },
           alpha: { max: 0.9, min: 0.2 },
           vy: { max: 2, min: 1 },
+          vr: { max: 0.03, min: 0.01 },
           colors1: colorList2,
           colors2: colorList3
         },
@@ -305,6 +315,7 @@ img {
           size: { max: 100, min: 40 },
           alpha: { max: 1, min: 0.8 },
           vy: { max: 1, min: 0.5 },
+          vr: { max: 0.03, min: 0.02 },
           colors1: colorList2,
           colors2: colorList4
         }
@@ -320,15 +331,15 @@ img {
 
       drawFrame()
 
-      // 5 秒后静止画面，缩放花瓣
+      // 6 秒后静止画面，缩放花瓣
       setTimeout(() => {
         layers.forEach(layer => { layer.zoom() })
-      }, 8000)
+      }, 6000)
 
       // 往后 1 秒花瓣方向运动
       setTimeout(() => {
         layers.forEach(layer => { layer.reverse() })
-      }, 9000)
+      }, 7000)
 
     })()
   </script>
