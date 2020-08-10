@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "parcel background-video/index.html",
-    "build": "parcel build background-video/index.html --no-source-maps"
+    "build": "parcel build background-video/index.html --no-source-maps --public-url /dist/"
   },
   "author": "kinglisky",
   "license": "ISC",
