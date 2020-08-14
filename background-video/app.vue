@@ -1,13 +1,7 @@
 <template>
-    <section
-        class="container"
-        :class="{ 'container--mobile': isMobile }"
-        :style="containerStyle"
-    >
-        <div
-            class="view"
-            :style="viewStyle"
-        >
+    <section class="container" :class="{ 'container--mobile': isMobile }" :style="containerStyle">
+        <div class="view" :style="viewStyle">
+            <img class="view__bg" src="./demo.jpeg" />
             <video
                 v-if="useVideo"
                 class="view__video"
@@ -22,11 +16,8 @@
                 :src="source.sources.mp4"
                 :poster="source.sources.poster"
             ></video>
-            <canvas
-                v-else
-                ref="canvas"
-                class="view__canvas"
-            />
+            <canvas v-else ref="canvas" class="view__canvas"></canvas>
+            <div class="view__mask">MASK</div>
         </div>
     </section>
 </template>
@@ -36,46 +27,93 @@ import Player from 'silent-film-player';
 import { isMobile, isIOS, isWeiXin, isWXMP, isExclude } from './user-agent';
 
 const SOURCE = {
+    water: {
+        width: 1920,
+        height: 1080,
+        sources: {
+            mp4:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/water.mp4',
+            ts:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/water.ts',
+            poster:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/water.jpeg',
+        },
+    },
+    petal: {
+        width: 1920,
+        height: 1080,
+        sources: {
+            mp4:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/petal.mp4',
+            ts:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/petal.ts',
+            poster:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/petal.jpeg',
+        },
+    },
+    rain: {
+        width: 1920,
+        height: 1080,
+        sources: {
+            mp4:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/rain.mp4',
+            ts: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/rain.ts',
+            poster:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/rain.jpeg',
+        },
+    },
     'silent-voice': {
         width: 1920,
         height: 1080,
         sources: {
-            mp4: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/silent-voice.mp4',
-            ts: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/silent-voice.ts',
-            poster: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/silent-voice.jpeg',
+            mp4:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/silent-voice.mp4',
+            ts:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/silent-voice.ts',
+            poster:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/silent-voice.jpeg',
         },
     },
-    'firefly': {
+    firefly: {
         width: 1920,
         height: 1080,
         sources: {
-            mp4: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/firefly.mp4',
-            ts: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/firefly.ts',
-            poster: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/firefly.jpeg',
+            mp4:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/firefly.mp4',
+            ts:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/firefly.ts',
+            poster:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/firefly.jpeg',
         },
     },
-    'fireworks': {
+    fireworks: {
         width: 1920,
         height: 1080,
         sources: {
-            mp4: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/fireworks.mp4',
-            ts: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/fireworks.ts',
-            poster: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/fireworks.jpeg',
+            mp4:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/fireworks.mp4',
+            ts:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/fireworks.ts',
+            poster:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/fireworks.jpeg',
         },
     },
     '3-lion': {
         width: 1280,
         height: 720,
         sources: {
-            mp4: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/3-lion.mp4',
-            ts: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/3-lion.ts',
-            poster: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/3-lion.jpeg',
+            mp4:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/3-lion.mp4',
+            ts:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/3-lion.ts',
+            poster:
+                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/3-lion.jpeg',
         },
     },
 };
 
 const urlParams = new URLSearchParams(location.search);
-const sourceName = urlParams.get('source') || '3-lion';
+const sourceName = urlParams.get('source') || 'rain';
 const useCanvas = Number(urlParams.get('canvas') || '0');
 
 export default {
@@ -92,7 +130,13 @@ export default {
     computed: {
         useVideo() {
             // PC/iOS 端（非微信环境）使用 video 渲染，其他环境使用 canvas 渲染
-            return (!isMobile() || isIOS()) && !isWeiXin() && !isWXMP() && !isExclude() && !useCanvas;
+            return (
+                (!isMobile() || isIOS()) &&
+                !isWeiXin() &&
+                !isWXMP() &&
+                !isExclude() &&
+                !useCanvas
+            );
         },
 
         source() {
@@ -109,7 +153,7 @@ export default {
         viewStyle() {
             const { container, source } = this;
             const ratio = container.height / source.height;
-            const width = source.width * ratio | 0;
+            const width = (source.width * ratio) | 0;
             return {
                 top: '0px',
                 left: `${-(width - container.width) / 2}px`,
@@ -132,12 +176,8 @@ export default {
         initPlayer() {
             if (!this.useVideo) {
                 const {
-                    source: {
-                        sources,
-                    },
-                    $refs: {
-                        canvas,
-                    },
+                    source: { sources },
+                    $refs: { canvas },
                 } = this;
                 window.player = new Player(sources.ts, {
                     canvas,
@@ -156,9 +196,9 @@ export default {
         this.init();
     },
 
-    mounted () {
+    mounted() {
         this.initPlayer();
-    }
+    },
 };
 </script>
 
@@ -178,6 +218,7 @@ body {
     justify-content: center;
     align-items: center;
     overflow: hidden;
+    font-family: -apple-system;
 }
 
 .container {
@@ -196,13 +237,43 @@ body {
     position: absolute;
     top: 0;
     left: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
     width: 100%;
     height: 100%;
+    border: 1px solid #000;
+
+    &__bg {
+        height: 100%;
+    }
 
     &__video,
     &__canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 2;
         width: 100%;
         height: 100%;
+
+        mix-blend-mode: screen;
+    }
+
+    &__mask {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        z-index: 3;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        width: 100%;
+        height: 200px;
+        font-size: 80px;
+        color: #fff;
     }
 }
 </style>
