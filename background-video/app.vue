@@ -13,9 +13,10 @@
                 mtt-playsinline="true"
                 webkit-playsinline="true"
                 x5-video-player-type="h5-page"
-                :src="source.sources.mp4"
                 :poster="source.sources.poster"
-            ></video>
+            >
+                <source :src="source.sources.mp4" type="video/mp4">
+            </video>
             <canvas v-else ref="canvas" class="view__canvas"></canvas>
             <div class="view__mask">MASK</div>
         </div>
@@ -49,17 +50,6 @@ const SOURCE = {
                 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/petal.ts',
             poster:
                 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/petal.jpeg',
-        },
-    },
-    rain: {
-        width: 1920,
-        height: 1080,
-        sources: {
-            mp4:
-                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/rain.mp4',
-            ts: 'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/rain.ts',
-            poster:
-                'https://kinglisky.oss-cn-hangzhou.aliyuncs.com/videos/rain.jpeg',
         },
     },
     'silent-voice': {
@@ -113,8 +103,8 @@ const SOURCE = {
 };
 
 const urlParams = new URLSearchParams(location.search);
-const sourceName = urlParams.get('source') || 'rain';
-const useCanvas = Number(urlParams.get('canvas') || '0');
+const sourceName = urlParams.get('source') || 'water';
+const useCanvas = urlParams.get('canvas');
 
 export default {
     data() {
@@ -129,12 +119,14 @@ export default {
 
     computed: {
         useVideo() {
+            if (useCanvas != null) {
+                return !Number(useCanvas); 
+            }
             // PC/iOS 端（非微信环境）使用 video 渲染，其他环境使用 canvas 渲染
             return (
                 (!isMobile() || isIOS()) &&
                 !isWeiXin() &&
-                !isWXMP() &&
-                !useCanvas
+                !isWXMP()
             );
         },
 
@@ -271,7 +263,7 @@ body {
         overflow: hidden;
         width: 100%;
         height: 200px;
-        font-size: 80px;
+        font-size: 48px;
         color: #fff;
     }
 }
