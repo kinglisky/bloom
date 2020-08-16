@@ -1,7 +1,11 @@
 <template>
     <section class="container" :class="{ 'container--mobile': isMobile }" :style="containerStyle">
         <div class="view" :style="viewStyle">
-            <img class="view__bg" src="./demo.jpeg" />
+            <img
+                v-if="showBg"
+                class="view__bg"
+                src="./demo.jpeg"
+            />
             <video
                 v-if="useVideo"
                 class="view__video"
@@ -105,6 +109,7 @@ const SOURCE = {
 const urlParams = new URLSearchParams(location.search);
 const sourceName = urlParams.get('source') || 'water';
 const useCanvas = urlParams.get('canvas');
+const showBg = urlParams.get('bg') || 1;
 
 export default {
     data() {
@@ -128,6 +133,10 @@ export default {
                 !isWeiXin() &&
                 !isWXMP()
             );
+        },
+
+        showBg() {
+            return Number(showBg);
         },
 
         source() {
@@ -262,7 +271,7 @@ body {
         align-items: center;
         overflow: hidden;
         width: 100%;
-        height: 200px;
+        height: 100%;
         font-size: 48px;
         color: #fff;
     }
