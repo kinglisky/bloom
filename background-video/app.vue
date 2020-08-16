@@ -24,7 +24,7 @@
 
 <script>
 import Player from 'silent-film-player';
-import { isMobile, isIOS, isWeiXin, isWXMP, isExclude } from './user-agent';
+import { isMobile, isIOS, isWeiXin, isWXMP } from './user-agent';
 
 const SOURCE = {
     water: {
@@ -134,7 +134,6 @@ export default {
                 (!isMobile() || isIOS()) &&
                 !isWeiXin() &&
                 !isWXMP() &&
-                !isExclude() &&
                 !useCanvas
             );
         },

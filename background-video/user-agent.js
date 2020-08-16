@@ -10,8 +10,14 @@ export function isMobile() {
 /**
  * @description 检查客服端是否为 IOS
  */
-export function isIOS() {
-    return !!UA.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/);
+const INCLUDE = ['dingtalk', 'mqqbrowser', 'sogoumobilebrowser', 'crios', 'edgios', 'fxios'];
+export function isIOS(include = INCLUDE) {
+    const checkIOS = !!UA.match(/\(i[^;]+;( U;)? CPU.+Mac OS X/);
+    if (!include.length) {
+        return checkIOS;
+    }
+    const ua = UA.toLowerCase();
+    return checkIOS && include.some(it => ua.indexOf(it) !== -1);
 }
 
 /**
