@@ -18,10 +18,20 @@
                 webkit-playsinline="true"
                 x5-video-player-type="h5-page"
                 :poster="source.sources.poster"
+                :class="{ 'mix-blend': showBg }"
             >
-                <source :src="source.sources.mp4" type="video/mp4">
+                <source
+                    type="video/mp4"
+                    :src="source.sources.mp4"
+                >
             </video>
-            <canvas v-else ref="canvas" class="view__canvas"></canvas>
+            <canvas
+                v-else
+                ref="canvas"
+                class="view__canvas"
+                :class="{ 'mix-blend': showBg }"
+            >
+            </canvas>
             <div class="view__mask">MASK</div>
         </div>
     </section>
@@ -161,6 +171,14 @@ export default {
                 height: `${container.height}px`,
             };
         },
+
+        videoStyle() {
+            const { showBg } = this;
+            if (showBg) {
+                return { 'mix-blend-mode': 'screen' };
+            }
+            return {};
+        }
     },
 
     methods: {
@@ -244,6 +262,7 @@ body {
     width: 100%;
     height: 100%;
     border: 1px solid #000;
+    background: #000;
 
     &__bg {
         height: 100%;
@@ -258,7 +277,9 @@ body {
         width: 100%;
         height: 100%;
 
-        mix-blend-mode: screen;
+        &.mix-blend {
+             mix-blend-mode: screen;
+        }
     }
 
     &__mask {
