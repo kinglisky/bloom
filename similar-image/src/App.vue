@@ -125,17 +125,23 @@
                     />
                 </div>
                 <div class="contents">
-                    <h2 class="compare-info">{{ compareHashInfo }}</h2>
+                    <h2 class="compare-info">
+                        {{ compareHashInfo }}
+                    </h2>
                 </div>
             </div>
 
             <!-- 颜色向量比较 -->
             <div
-                v-if="hashData.length && colorsList.length"
+                v-if="imageUrls.length"
                 class="panel"
             >
                 <div class="title">
-                    颜色向量比较
+                    <button
+                        @click="createColorHistogram"
+                    >
+                        颜色向量比较
+                    </button>
                 </div>
                 <div class="contents">
                     <textarea
@@ -199,14 +205,12 @@ const useImages = (imageSizeChange) => {
 // 灰度输出
 const useGrayOutput = ({ imageRefs, imageSize }) => {
     const grayCavans = ref([]);
-    const colorsList = ref([]);
     const hasGrayOutput = ref(false);
     const calculateGray = (r, g, b) => parseInt(r * 0.299 + g * 0.587 + b * 0.114);
 
     const imageToGray = (canvas) => {
         const ctx = canvas.getContext('2d');
         const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const colors = [];
         for (let x = 0; x < data.width; x++) {
             for (let y = 0; y < data.height; y++) {
                 const idx = (x + y * canvas.width) * 4;
@@ -214,14 +218,6 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
                 const r = data.data[idx + 0];
                 const g = data.data[idx + 1];
                 const b = data.data[idx + 2];
-                const a = data.data[idx + 3];
-
-                colors.push([
-                    Math.round((r + 16) / 32) - 1,
-                    Math.round((g + 16) / 32) - 1,
-                    Math.round((b + 16) / 32) - 1,
-                    Math.round((a + 16) / 32) - 1,
-                ]);
 
                 //更新图像数据
                 const gray = calculateGray(r, g, b);
@@ -231,7 +227,6 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
             }
         }
         ctx.putImageData(data, 0, 0);
-        return colors;
     }
 
     const setGrayOutput = () => {
@@ -242,16 +237,12 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
         const ctx2 = canvas2.getContext('2d');
         ctx1.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
         ctx2.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
-        const colors1 = imageToGray(canvas1);
-        const colors2 = imageToGray(canvas2);
-        colorsList.value = [colors1, colors2];
         hasGrayOutput.value = true;
     };
     return {
         grayCavans,
         hasGrayOutput,
         setGrayOutput,
-        colorsList,
     };
 }
 
@@ -337,11 +328,11 @@ const useExtremumOutput = ({ grayCavans }) => {
     }
 
     const getCanvasImageData = () => {
-        const [grayCanvas1, gratCanvas2] = grayCavans.value;
+        const [grayCanvas1, grayCanvas2] = grayCavans.value;
         const ctx1 = grayCanvas1.getContext('2d');
-        const ctx2 = gratCanvas2.getContext('2d');
+        const ctx2 = grayCanvas2.getContext('2d');
         const imageData1 = ctx1.getImageData(0, 0, grayCanvas1.width, grayCanvas1.height);
-        const imageData2 = ctx2.getImageData(0, 0, gratCanvas2.width, gratCanvas2.height);
+        const imageData2 = ctx2.getImageData(0, 0, grayCanvas2.width, grayCanvas2.height);
         return [imageData1, imageData2];
     }
 
@@ -373,7 +364,7 @@ const useExtremumOutput = ({ grayCavans }) => {
     };
 }
 
-const useCompareHash = (hashData) => {
+const useImageHash = (hashData) => {
     const compareHashInfo = ref('');
 
     watch(hashData, (data) => {
@@ -392,15 +383,73 @@ const useCompareHash = (hashData) => {
     };
 }
 
-const useCompareColor = (colorsList) => {
+const useColorHistogram = ({ imageRefs, imageSize }) => {
     const compareColorInfo = ref('');
-    watch(colorsList, (colors) => {
-        if (!colors.length) return;
-        const [colors1, color2] = colors;
-        
-    });
+    const colorsList = ref([]);
+
+    const createCanvas = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = imageSize.value;
+        canvas.height = imageSize.value;
+        return canvas;
+    }
+
+    const getImageData = () => {
+        const canvas1 = createCanvas();
+        const canvas2 = createCanvas();
+        const [image1, image2] = imageRefs.value;
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+        ctx1.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        ctx2.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        const imageData1 = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
+        const imageData2 = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
+        return [imageData1, imageData2];
+    }
+
+    const getColors = (data, chunk = 4) => {
+        const chunkSize = 256 / chunk;
+        const halfSize = chunkSize / 2;
+        const colors = Array.from({ length: Math.pow(chunk, 3) }).fill(0);
+        for (let x = 0; x < data.width; x++) {
+            for (let y = 0; y < data.height; y++) {
+                const idx = (x + y * data.width) * 4;
+                // The RGB values
+                const r = Math.round((data.data[idx + 0] + halfSize) / chunkSize) - 1;
+                const g = Math.round((data.data[idx + 1] + halfSize) / chunkSize) - 1;
+                const b = Math.round((data.data[idx + 2] + halfSize) / chunkSize) - 1;
+                const index = r * Math.pow(chunk, 2) + g * chunk + b;
+                colors[index] += 1;
+            }
+        }
+        return colors;
+    }
+
+    const calculateCosine = (d1, d2) => {
+        let numerator = 0;
+        let denominatorA = 0;
+        let denominatorB = 0;
+        for (let i = 0; i < d1.length; i ++) {
+            numerator += d1[i] * d2[i];
+            denominatorA += Math.pow(d1[i], 2);
+            denominatorB += Math.pow(d2[i], 2);
+        }
+        return numerator / (Math.sqrt(denominatorA) * Math.sqrt(denominatorB));
+    };
+
+    const createColorHistogram = () => {
+        const [imageData1, imageData2] = getImageData()
+        const colors1 = getColors(imageData1);
+        const colors2 = getColors(imageData2);
+        colorsList.value = [colors1, colors2];
+        const cosine = calculateCosine(colors1, colors2);
+        compareColorInfo.value = `颜色向量相似度为：${cosine * 100}%`;
+    };
+
     return {
         compareColorInfo,
+        colorsList,
+        createColorHistogram,
     };
 }
 
@@ -411,19 +460,23 @@ export default {
         const images = useImages();
         const grayOutput = useGrayOutput(images);
         const extremumOutput = useExtremumOutput(grayOutput);
-        const compareColor = useCompareColor(grayOutput.colorsList);
-        const compareHash = useCompareHash(extremumOutput.hashData);
-        watch(images.imageSize, () => {
+        const imageHash = useImageHash(extremumOutput.hashData);
+        const colorHistogra = useColorHistogram(images);
+
+        const reset = () => {
             grayOutput.hasGrayOutput.value = false;
             extremumOutput.hashData.value = [];
-        });
+        };
+
+        watch(images.imageUrls, reset);
+        watch(images.imageSize, reset);
 
         return {
             ...images,
             ...grayOutput,
             ...extremumOutput,
-            ...compareColor,
-            ...compareHash,
+            ...colorHistogra,
+            ...imageHash,
         };
     },
 };
