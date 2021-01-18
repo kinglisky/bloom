@@ -1,10 +1,7 @@
 <template>
-    <main
-        class="similar-images"
-        :style="varStyles"
-    >
+    <main class="similar-images" :style="imageStyles">
         <div class="header">
-            <button class="btn">
+            <button class="header-item upload">
                 <label for="upload">图片上传</label>
                 <input
                     multiple
@@ -14,19 +11,150 @@
                     @change="updateImageUrls"
                 />
             </button>
+            <div class="header-item size">
+                <span>图片尺寸</span>
+                <input
+                    type="range"
+                    placeholder="图片尺寸"
+                    min="8"
+                    max="128"
+                    step="4"
+                    v-model="imageSize"
+                />
+                <span>{{ imageSize }}px</span>
+            </div>
         </div>
         <template v-if="imageUrls.length">
             <div class="panel">
                 <span class="title">原始图片</span>
-                <div class="images">
-                    <img :src="imageUrls[0]" />
-                    <img :src="imageUrls[1]" />
+                <div class="contents">
+                    <img
+                        class="content-item"
+                        :src="imageUrls[0]"
+                        :ref="el =>(imageRefs[0] = el)"
+                    />
+                    <img
+                        class="content-item"
+                        :src="imageUrls[1]"
+                        :ref="el =>(imageRefs[1] = el)"
+                    />
                 </div>
             </div>
+
+            <!-- 灰度输出 -->
             <div class="panel">
-                <span class="title">difference</span>
-                <div class="images">
-                    <canvas></canvas>
+                <span class="title">
+                    <button
+                        @click="setGrayOutput"
+                    >
+                        灰度
+                    </button>
+                </span>
+                <div class="contents">
+                    <canvas
+                        class="content-item"
+                        :width="imageSize"
+                        :height="imageSize"
+                        :ref="el => (grayCavans[0] = el)"
+                    />
+                    <canvas
+                        class="content-item"
+                        :width="imageSize"
+                        :height="imageSize"
+                        :ref="el => (grayCavans[1] = el)"
+                    />
+                </div>
+            </div>
+
+            <!-- 二值化 -->
+            <div
+                v-if="hasGrayOutput"
+                class="panel"
+            >
+                <div class="title">
+                    <button
+                        @click="setAverageOutput"
+                    >
+                        average
+                    </button>
+                    <button
+                        @click="setOtsuOutput"
+                    >
+                        otsu
+                    </button>
+                    <span>二值化</span>
+                </div>
+                <div class="contents">
+                    <canvas
+                        class="content-item"
+                        :width="imageSize"
+                        :height="imageSize"
+                        :ref="el => (extremumCanvas[0] = el)"
+                    />
+                    <canvas
+                        class="content-item"
+                        :width="imageSize"
+                        :height="imageSize"
+                        :ref="el => (extremumCanvas[1] = el)"
+                    />
+                </div>
+            </div>
+
+            <!-- 特征值比较 -->
+            <div
+                v-if="hashData.length"
+                class="panel"
+            >
+                <div class="title">
+                    特征值比较
+                </div>
+                <div class="contents">
+                    <textarea
+                        class="content-item"
+                        readonly
+                        :width="imageSize"
+                        :height="imageSize"
+                        :value="hashData[0]"
+                    />
+                    <textarea
+                        class="content-item"
+                        readonly
+                        :width="imageSize"
+                        :height="imageSize"
+                        :value="hashData[1]"
+                    />
+                </div>
+                <div class="contents">
+                    <h2 class="compare-info">{{ compareHashInfo }}</h2>
+                </div>
+            </div>
+
+            <!-- 颜色向量比较 -->
+            <div
+                v-if="hashData.length && colorsList.length"
+                class="panel"
+            >
+                <div class="title">
+                    颜色向量比较
+                </div>
+                <div class="contents">
+                    <textarea
+                        class="content-item"
+                        readonly
+                        :width="imageSize"
+                        :height="imageSize"
+                        :value="colorsList[0]"
+                    />
+                    <textarea
+                        class="content-item"
+                        readonly
+                        :width="imageSize"
+                        :height="imageSize"
+                        :value="colorsList[1]"
+                    />
+                </div>
+                <div class="contents">
+                    <h2 class="compare-info">{{ compareColorInfo }}</h2>
                 </div>
             </div>
         </template>
@@ -34,37 +162,268 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import defaultImage1 from './assets/0.jpeg';
+import defaultImage2 from './assets/1.jpeg';
 
-const SIZE = 128;
+const useImages = (imageSizeChange) => {
+    const imageSize = ref(64);
+    const imageStyles = computed(() => {
+        return {
+            '--width': `${imageSize.value}px`,
+            '--height': `${imageSize.value}px`,
+        };
+    });
+    const imageRefs = ref([]);
+    const imageUrls = ref([
+        defaultImage1,
+        defaultImage2,
+    ]);
 
-const useImages = () => {
-    const imageUrls = ref([]);
     const updateImageUrls = (event) => {
         const urls = [...event.target.files]
             .slice(0, 2)
             .map((file) => URL.createObjectURL(file));
         imageUrls.value = urls;
     };
+
     return {
+        imageSize,
+        imageStyles,
+        imageRefs,
         imageUrls,
         updateImageUrls,
     };
+};
+
+// 灰度输出
+const useGrayOutput = ({ imageRefs, imageSize }) => {
+    const grayCavans = ref([]);
+    const colorsList = ref([]);
+    const hasGrayOutput = ref(false);
+    const calculateGray = (r, g, b) => parseInt(r * 0.299 + g * 0.587 + b * 0.114);
+
+    const imageToGray = (canvas) => {
+        const ctx = canvas.getContext('2d');
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const colors = [];
+        for (let x = 0; x < data.width; x++) {
+            for (let y = 0; y < data.height; y++) {
+                const idx = (x + y * canvas.width) * 4;
+                // The RGB values
+                const r = data.data[idx + 0];
+                const g = data.data[idx + 1];
+                const b = data.data[idx + 2];
+                const a = data.data[idx + 3];
+
+                colors.push([
+                    Math.round((r + 16) / 32) - 1,
+                    Math.round((g + 16) / 32) - 1,
+                    Math.round((b + 16) / 32) - 1,
+                    Math.round((a + 16) / 32) - 1,
+                ]);
+
+                //更新图像数据
+                const gray = calculateGray(r, g, b);
+                data.data[idx + 0] = gray;
+                data.data[idx + 1] = gray;
+                data.data[idx + 2] = gray;
+            }
+        }
+        ctx.putImageData(data, 0, 0);
+        return colors;
+    }
+
+    const setGrayOutput = () => {
+        if (!grayCavans.value.length || !imageRefs.value.length) return;
+        const [image1, image2] = imageRefs.value;
+        const [canvas1, canvas2] = grayCavans.value;
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+        ctx1.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        ctx2.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        const colors1 = imageToGray(canvas1);
+        const colors2 = imageToGray(canvas2);
+        colorsList.value = [colors1, colors2];
+        hasGrayOutput.value = true;
+    };
+    return {
+        grayCavans,
+        hasGrayOutput,
+        setGrayOutput,
+        colorsList,
+    };
 }
+
+// 极值化输出
+const useExtremumOutput = ({ grayCavans }) => {
+    const extremumCanvas = ref([]);
+    const hashData = ref([]);
+    // 像素平均值去图片阈值
+    const average = (imageData) => {
+        let sum = 0;
+        for (let i = 0; i < imageData.length - 1; i += 4) {
+            const r = imageData[i];
+            const g = imageData[i + 1];
+            const b = imageData[i + 2];
+            sum += r + g + b;
+        }
+        return Math.round(sum / imageData.length);
+    }
+
+    // 大津法取图片阈值
+     const otsu = (imageData) => {
+        let ptr = 0
+        let histData = Array(256).fill(0) // 记录0-256每个灰度值的数量，初始值为0
+        let total = imageData.length
+
+        while (ptr < total) {
+            let h = imageData[ptr++];
+            histData[h]++
+        }
+
+        let sum = 0        // 总数(灰度值x数量)
+        for (let i = 0; i < 256; i++) {
+            sum += i * histData[i]
+        }
+
+
+        let wB = 0         // 背景（小于阈值）的数量
+        let wF = 0         // 前景（大于阈值）的数量
+        let sumB = 0       // 背景图像（灰度x数量）总和
+        let varMax = 0     // 存储最大类间方差值
+        let threshold = 0  // 阈值
+
+        for (let t = 0; t < 256; t++) {
+            wB += histData[t]       // 背景（小于阈值）的数量累加
+            if (wB === 0) continue
+            wF = total - wB         // 前景（大于阈值）的数量累加
+            if (wF === 0) break
+
+            sumB += t * histData[t] // 背景（灰度x数量）累加
+
+            let mB = sumB / wB          // 背景（小于阈值）的平均灰度
+            let mF = (sum - sumB) / wF  // 前景（大于阈值）的平均灰度
+
+            let varBetween = wB * wF * (mB - mF) ** 2  // 类间方差
+
+            if (varBetween > varMax) {
+                varMax = varBetween
+                threshold = t
+            }
+        }
+
+        return threshold
+    }
+
+    const imageBinaryzationOutput = (canvas, imageData, threshold) => {
+        const { width, height, data } = imageData;
+        const hash = [];
+        for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+                const idx = (x + y * canvas.width) * 4;
+                const v = data[idx + 0] > threshold ? 255 : 0;
+                data[idx] = v;
+                data[idx + 1] = v;
+                data[idx + 2] = v;
+                hash.push(v > 0 ? 1 : 0);
+                // data[idx + 3] = data[idx + 3];
+            }
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.putImageData(imageData, 0, 0);
+        return hash;
+    }
+
+    const getCanvasImageData = () => {
+        const [grayCanvas1, gratCanvas2] = grayCavans.value;
+        const ctx1 = grayCanvas1.getContext('2d');
+        const ctx2 = gratCanvas2.getContext('2d');
+        const imageData1 = ctx1.getImageData(0, 0, grayCanvas1.width, grayCanvas1.height);
+        const imageData2 = ctx2.getImageData(0, 0, gratCanvas2.width, gratCanvas2.height);
+        return [imageData1, imageData2];
+    }
+
+    const setAverageOutput = () => {
+        const [imageData1, imageData2] = getCanvasImageData();
+        const threshold1 = average(imageData1.data);
+        const threshold2 = average(imageData2.data);
+        const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
+        const hash1 = imageBinaryzationOutput(extremumCanvas1, imageData1, threshold1);
+        const hash2 = imageBinaryzationOutput(extremumCanvas2, imageData2, threshold2);
+        hashData.value = [hash1, hash2];
+    };
+
+    const setOtsuOutput = () => {
+        const [imageData1, imageData2] = getCanvasImageData();
+        const threshold1 = otsu(imageData1.data);
+        const threshold2 = otsu(imageData2.data);
+        const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
+        const hash1 = imageBinaryzationOutput(extremumCanvas1, imageData1, threshold1);
+        const hash2 = imageBinaryzationOutput(extremumCanvas2, imageData2, threshold2);
+        hashData.value = [hash1, hash2];
+    };
+
+    return {
+        extremumCanvas,
+        setAverageOutput,
+        setOtsuOutput,
+        hashData,
+    };
+}
+
+const useCompareHash = (hashData) => {
+    const compareHashInfo = ref('');
+
+    watch(hashData, (data) => {
+        if (!data.length) return;
+        const [hash1, hash2] = data;
+        let count = 0;
+        hash1.forEach((it, index) => {
+            count += it ^ hash2[index];
+        });
+
+        compareHashInfo.value = `差异: ${count}, 相似度: ${(hash1.length - count) / hash1.length * 100}%`;
+        console.log(compareHashInfo.value);
+    });
+    return {
+        compareHashInfo,
+    };
+}
+
+const useCompareColor = (colorsList) => {
+    const compareColorInfo = ref('');
+    watch(colorsList, (colors) => {
+        if (!colors.length) return;
+        const [colors1, color2] = colors;
+        
+    });
+    return {
+        compareColorInfo,
+    };
+}
+
 export default {
     name: 'App',
 
-    setup() {
-        const varStyles = computed(() => {
-            return {
-                '--width': '128px',
-                '--height': '128px',
-            };
+    setup(props, ctx) {
+        const images = useImages();
+        const grayOutput = useGrayOutput(images);
+        const extremumOutput = useExtremumOutput(grayOutput);
+        const compareColor = useCompareColor(grayOutput.colorsList);
+        const compareHash = useCompareHash(extremumOutput.hashData);
+        watch(images.imageSize, () => {
+            grayOutput.hasGrayOutput.value = false;
+            extremumOutput.hashData.value = [];
         });
 
         return {
-            varStyles,
-            ...useImages(),
+            ...images,
+            ...grayOutput,
+            ...extremumOutput,
+            ...compareColor,
+            ...compareHash,
         };
     },
 };
@@ -72,62 +431,89 @@ export default {
 
 <style lang="scss">
 .similar-images {
+    button {
+        padding: 8px 16px;
+        font-size: 14px;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+    }
     .header {
         display: flex;
         align-items: center;
         padding: 16px;
     }
 
-    .btn {
+    .header-item {
         position: relative;
         display: flex;
         justify-content: center;
         align-items: center;
-        width: 200px;
-        height: 60px;
-        font-size: 14px;
+        padding: 8px 16px;
         background: #fff;
         border: 1px solid #ccc;
         border-radius: 4px;
         cursor: pointer;
 
-        input {
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-            opacity: 0;
+        & + .header-item {
+            margin-left: 8px;
+        }
+
+        &.upload {
+            input {
+                position: absolute;
+                top: 0;
+                left: 0;
+                z-index: 1;
+                width: 100%;
+                height: 100%;
+                cursor: pointer;
+                opacity: 0;
+            }
+        }
+
+        &.size {
+            input {
+                margin: 0 8px;
+            }
         }
     }
     .panel {
         padding: 0 16px;
-
-        & + .panel {
-            margin-top: 24px;
-        }
+        margin: 24px 0;
     }
 
     .title {
-        display: block;
+        display: flex;
+        align-items: center;
         margin-bottom: 8px;
+
+        * + * {
+            margin-left: 8px;
+        }
     }
 
-    .images {
+    .contents {
         display: flex;
         align-items: center;
 
-        img {
+        .content-item {
+            display: block;
             width: var(--width);
             height: var(--height);
-            display: block;
+            resize: none;
 
-            & + img {
+            & + .content-item {
                 margin-left: 16px;
             }
         }
+    }
+
+    .compare-info {
+        margin-top: 8px;
+        color: #f00;
+        font-size: 16px;
     }
 }
 </style>
