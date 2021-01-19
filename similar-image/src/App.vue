@@ -47,7 +47,7 @@
                     <button
                         @click="setCanvasDiff"
                     >
-                        canvas diff
+                        canvas difference
                     </button>
                 </span>
                 <div class="contents">
@@ -57,6 +57,11 @@
                         :height="imageSize"
                         class="content-item"
                     />
+                </div>
+                <div class="contents">
+                    <h2 class="compare-info">
+                        Diff Pix: {{ canvasDiffPix }}
+                    </h2>
                 </div>
             </div>
 
@@ -179,7 +184,9 @@
                     />
                 </div>
                 <div class="contents">
-                    <h2 class="compare-info">{{ compareColorInfo }}</h2>
+                    <h2 class="compare-info">
+                        {{ compareColorInfo }}
+                    </h2>
                 </div>
             </div>
         </template>
@@ -191,6 +198,11 @@ import { ref, computed, watch, onMounted } from 'vue';
 import defaultImage1 from './assets/0.jpeg';
 import defaultImage2 from './assets/1.jpeg';
 
+const DEFAULT_IMAGE_URLS = [
+    defaultImage1,
+    defaultImage2,
+];
+
 const useImages = (imageSizeChange) => {
     const imageSize = ref(64);
     const imageStyles = computed(() => {
@@ -200,15 +212,18 @@ const useImages = (imageSizeChange) => {
         };
     });
     const imageRefs = ref([]);
-    const imageUrls = ref([
-        defaultImage1,
-        defaultImage2,
-    ]);
+    const imageUrls = ref([...DEFAULT_IMAGE_URLS]);
 
     const updateImageUrls = (event) => {
-        const urls = [...event.target.files]
+        let urls = [...event.target.files]
             .slice(0, 2)
             .map((file) => URL.createObjectURL(file));
+        if (urls.length < 2) {
+            urls = [
+                ...urls,
+                ...DEFAULT_IMAGE_URLS,
+            ].slice(0, 2);
+        }
         imageUrls.value = urls;
     };
 
@@ -223,18 +238,37 @@ const useImages = (imageSizeChange) => {
 
 const useCompositeDiff = ({ imageRefs, imageSize }) => {
     const compositeCanvas = ref(null);
+    const canvasDiffPix = ref(0);
+
+    const checkDiff = (data) => {
+        let diff = 0;
+        for (let x = 0; x < data.width; x++) {
+            for (let y = 0; y < data.height; y++) {
+                const idx = (x + y * data.width) * 4;
+                const r = data.data[idx + 0];
+                const g = data.data[idx + 1];
+                const b = data.data[idx + 2];
+                diff += ((r + g + b) ? 1 : 0);
+            }
+        }
+        return diff;
+    };
 
     const setCanvasDiff = () => {
         const [image1, image2] = imageRefs.value;
         const ctx = compositeCanvas.value.getContext('2d');
+        ctx.clearRect(0, 0, imageSize.value, imageSize.value);
         ctx.globalCompositeOperation = 'difference';
         ctx.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
         ctx.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        const imageData = ctx.getImageData(0, 0, imageSize.value, imageSize.value);
+        canvasDiffPix.value = checkDiff(imageData);
     };
 
     return {
         compositeCanvas,
         setCanvasDiff,
+        canvasDiffPix,
     };
 }
 
@@ -249,7 +283,7 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
         const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
         for (let x = 0; x < data.width; x++) {
             for (let y = 0; y < data.height; y++) {
-                const idx = (x + y * canvas.width) * 4;
+                const idx = (x + y * data.width) * 4;
                 // The RGB values
                 const r = data.data[idx + 0];
                 const g = data.data[idx + 1];
@@ -266,13 +300,14 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
     }
 
     const setGrayOutput = () => {
-        if (!grayCavans.value.length || !imageRefs.value.length) return;
         const [image1, image2] = imageRefs.value;
         const [canvas1, canvas2] = grayCavans.value;
         const ctx1 = canvas1.getContext('2d');
         const ctx2 = canvas2.getContext('2d');
         ctx1.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
         ctx2.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        imageToGray(canvas1);
+        imageToGray(canvas2);
         hasGrayOutput.value = true;
     };
     return {
@@ -503,6 +538,8 @@ export default {
         const reset = () => {
             grayOutput.hasGrayOutput.value = false;
             extremumOutput.hashData.value = [];
+            colorHistogra.colorsList.value = [];
+            colorHistogra.compareColorInfo.value = '';
         };
 
         watch(images.imageUrls, reset);
