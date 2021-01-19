@@ -41,6 +41,25 @@
                 </div>
             </div>
 
+            <!-- canvas diff -->
+            <div class="panel">
+                <span class="title">
+                    <button
+                        @click="setCanvasDiff"
+                    >
+                        canvas diff
+                    </button>
+                </span>
+                <div class="contents">
+                    <canvas
+                        ref="compositeCanvas"
+                        :width="imageSize"
+                        :height="imageSize"
+                        class="content-item"
+                    />
+                </div>
+            </div>
+
             <!-- 灰度输出 -->
             <div class="panel">
                 <span class="title">
@@ -201,6 +220,23 @@ const useImages = (imageSizeChange) => {
         updateImageUrls,
     };
 };
+
+const useCompositeDiff = ({ imageRefs, imageSize }) => {
+    const compositeCanvas = ref(null);
+
+    const setCanvasDiff = () => {
+        const [image1, image2] = imageRefs.value;
+        const ctx = compositeCanvas.value.getContext('2d');
+        ctx.globalCompositeOperation = 'difference';
+        ctx.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        ctx.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+    };
+
+    return {
+        compositeCanvas,
+        setCanvasDiff,
+    };
+}
 
 // 灰度输出
 const useGrayOutput = ({ imageRefs, imageSize }) => {
@@ -458,6 +494,7 @@ export default {
 
     setup(props, ctx) {
         const images = useImages();
+        const compositeDiff = useCompositeDiff(images);
         const grayOutput = useGrayOutput(images);
         const extremumOutput = useExtremumOutput(grayOutput);
         const imageHash = useImageHash(extremumOutput.hashData);
@@ -473,6 +510,7 @@ export default {
 
         return {
             ...images,
+            ...compositeDiff,
             ...grayOutput,
             ...extremumOutput,
             ...colorHistogra,
@@ -556,6 +594,7 @@ export default {
             width: var(--width);
             height: var(--height);
             resize: none;
+            border: 1px solid #eee;
 
             & + .content-item {
                 margin-left: 16px;
