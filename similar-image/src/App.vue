@@ -41,30 +41,6 @@
                 </div>
             </div>
 
-            <!-- canvas diff -->
-            <div class="panel">
-                <span class="title">
-                    <button
-                        @click="setCanvasDiff"
-                    >
-                        canvas difference
-                    </button>
-                </span>
-                <div class="contents">
-                    <canvas
-                        ref="compositeCanvas"
-                        :width="imageSize"
-                        :height="imageSize"
-                        class="content-item"
-                    />
-                </div>
-                <div class="contents">
-                    <h2 class="compare-info">
-                        Diff Pix: {{ canvasDiffPix }}
-                    </h2>
-                </div>
-            </div>
-
             <!-- 灰度输出 -->
             <div class="panel">
                 <span class="title">
@@ -194,7 +170,7 @@
 </template>
 
 <script>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import defaultImage1 from './assets/0.jpeg';
 import defaultImage2 from './assets/1.jpeg';
 
@@ -203,7 +179,7 @@ const DEFAULT_IMAGE_URLS = [
     defaultImage2,
 ];
 
-const useImages = (imageSizeChange) => {
+const useImages = () => {
     const imageSize = ref(64);
     const imageStyles = computed(() => {
         return {
@@ -235,42 +211,6 @@ const useImages = (imageSizeChange) => {
         updateImageUrls,
     };
 };
-
-const useCompositeDiff = ({ imageRefs, imageSize }) => {
-    const compositeCanvas = ref(null);
-    const canvasDiffPix = ref(0);
-
-    const checkDiff = (data) => {
-        let diff = 0;
-        for (let x = 0; x < data.width; x++) {
-            for (let y = 0; y < data.height; y++) {
-                const idx = (x + y * data.width) * 4;
-                const r = data.data[idx + 0];
-                const g = data.data[idx + 1];
-                const b = data.data[idx + 2];
-                diff += ((r + g + b) ? 1 : 0);
-            }
-        }
-        return diff;
-    };
-
-    const setCanvasDiff = () => {
-        const [image1, image2] = imageRefs.value;
-        const ctx = compositeCanvas.value.getContext('2d');
-        ctx.clearRect(0, 0, imageSize.value, imageSize.value);
-        ctx.globalCompositeOperation = 'difference';
-        ctx.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
-        ctx.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
-        const imageData = ctx.getImageData(0, 0, imageSize.value, imageSize.value);
-        canvasDiffPix.value = checkDiff(imageData);
-    };
-
-    return {
-        compositeCanvas,
-        setCanvasDiff,
-        canvasDiffPix,
-    };
-}
 
 // 灰度输出
 const useGrayOutput = ({ imageRefs, imageSize }) => {
@@ -527,9 +467,8 @@ const useColorHistogram = ({ imageRefs, imageSize }) => {
 export default {
     name: 'App',
 
-    setup(props, ctx) {
+    setup() {
         const images = useImages();
-        const compositeDiff = useCompositeDiff(images);
         const grayOutput = useGrayOutput(images);
         const extremumOutput = useExtremumOutput(grayOutput);
         const imageHash = useImageHash(extremumOutput.hashData);
@@ -547,7 +486,6 @@ export default {
 
         return {
             ...images,
-            ...compositeDiff,
             ...grayOutput,
             ...extremumOutput,
             ...colorHistogra,
