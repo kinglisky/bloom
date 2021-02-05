@@ -5,6 +5,7 @@
             .then(res => res.blob())
             .then(blob => URL.createObjectURL(blob))
             .then(blobUrl => {
+
                 return new Promise((resolve, reject) => {
                     const img = new Image();
                     img.onload = () => resolve(img);
@@ -14,19 +15,19 @@
             });
     };
 
-    const getImageData = (image, size = 64) => {
+    const getImageData = (image) => {
         const { naturalWidth: width, naturalHeight: height } = image;
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(image, 0, 0);
-        ctx.drawImage(image, 0, 0, width, height, 0, 0, size, size);
         return ctx.getImageData(0, 0, width, height);
     };
 
     const compareImage = (imageData1, imageData2) => {
         const { width, height } = imageData1;
+        // 尺寸不同直接 pass
         if (imageData2.width !== width || imageData2.height !== height) {
             return false;
         }
@@ -39,7 +40,6 @@
                 const db = imageData1.data[idx + 2] - imageData2.data[idx + 2];
                 const da = imageData1.data[idx + 3] - imageData2.data[idx + 3];
                 if (dr || dg || db || da) {
-                    console.log({ x, y, dr,  dg,  db,  da });
                     return false;
                 }
             }

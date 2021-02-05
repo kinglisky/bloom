@@ -17,7 +17,7 @@
                     type="range"
                     placeholder="图片尺寸"
                     min="8"
-                    max="128"
+                    max="256"
                     step="4"
                     v-model="imageSize"
                 />
@@ -31,12 +31,12 @@
                     <img
                         class="content-item"
                         :src="imageUrls[0]"
-                        :ref="el =>(imageRefs[0] = el)"
+                        :ref="(el) => (imageRefs[0] = el)"
                     />
                     <img
                         class="content-item"
                         :src="imageUrls[1]"
-                        :ref="el =>(imageRefs[1] = el)"
+                        :ref="(el) => (imageRefs[1] = el)"
                     />
                 </div>
             </div>
@@ -44,44 +44,29 @@
             <!-- 灰度输出 -->
             <div class="panel">
                 <span class="title">
-                    <button
-                        @click="setGrayOutput"
-                    >
-                        灰度
-                    </button>
+                    <button @click="setGrayOutput">灰度</button>
                 </span>
                 <div class="contents">
                     <canvas
                         class="content-item"
                         :width="imageSize"
                         :height="imageSize"
-                        :ref="el => (grayCavans[0] = el)"
+                        :ref="(el) => (grayCavans[0] = el)"
                     />
                     <canvas
                         class="content-item"
                         :width="imageSize"
                         :height="imageSize"
-                        :ref="el => (grayCavans[1] = el)"
+                        :ref="(el) => (grayCavans[1] = el)"
                     />
                 </div>
             </div>
 
             <!-- 二值化 -->
-            <div
-                v-if="hasGrayOutput"
-                class="panel"
-            >
+            <div v-if="hasGrayOutput" class="panel">
                 <div class="title">
-                    <button
-                        @click="setAverageOutput"
-                    >
-                        average
-                    </button>
-                    <button
-                        @click="setOtsuOutput"
-                    >
-                        otsu
-                    </button>
+                    <button @click="setAverageOutput">average</button>
+                    <button @click="setOtsuOutput">otsu</button>
                     <span>二值化</span>
                 </div>
                 <div class="contents">
@@ -89,35 +74,30 @@
                         class="content-item"
                         :width="imageSize"
                         :height="imageSize"
-                        :ref="el => (extremumCanvas[0] = el)"
+                        :ref="(el) => (extremumCanvas[0] = el)"
                     />
                     <canvas
                         class="content-item"
                         :width="imageSize"
                         :height="imageSize"
-                        :ref="el => (extremumCanvas[1] = el)"
+                        :ref="(el) => (extremumCanvas[1] = el)"
                     />
                 </div>
             </div>
 
             <!-- 特征值比较 -->
-            <div
-                v-if="hashData.length"
-                class="panel"
-            >
-                <div class="title">
-                    特征值比较
-                </div>
+            <div v-if="hashData.length" class="panel">
+                <div class="title">特征值比较</div>
                 <div class="contents">
                     <textarea
-                        class="content-item"
+                        class="content-item keep-size"
                         readonly
                         :width="imageSize"
                         :height="imageSize"
                         :value="hashData[0]"
                     />
                     <textarea
-                        class="content-item"
+                        class="content-item keep-size"
                         readonly
                         :width="imageSize"
                         :height="imageSize"
@@ -132,27 +112,20 @@
             </div>
 
             <!-- 颜色向量比较 -->
-            <div
-                v-if="imageUrls.length"
-                class="panel"
-            >
+            <div v-if="imageUrls.length" class="panel">
                 <div class="title">
-                    <button
-                        @click="createColorHistogram"
-                    >
-                        颜色向量比较
-                    </button>
+                    <button @click="createColorHistogram">颜色向量比较</button>
                 </div>
                 <div class="contents">
                     <textarea
-                        class="content-item"
+                        class="content-item keep-size"
                         readonly
                         :width="imageSize"
                         :height="imageSize"
                         :value="colorsList[0]"
                     />
                     <textarea
-                        class="content-item"
+                        class="content-item keep-size"
                         readonly
                         :width="imageSize"
                         :height="imageSize"
@@ -174,10 +147,7 @@ import { ref, computed, watch } from 'vue';
 import defaultImage1 from './assets/0.jpeg';
 import defaultImage2 from './assets/1.jpeg';
 
-const DEFAULT_IMAGE_URLS = [
-    defaultImage1,
-    defaultImage2,
-];
+const DEFAULT_IMAGE_URLS = [defaultImage1, defaultImage2];
 
 const useImages = () => {
     const imageSize = ref(64);
@@ -195,10 +165,7 @@ const useImages = () => {
             .slice(0, 2)
             .map((file) => URL.createObjectURL(file));
         if (urls.length < 2) {
-            urls = [
-                ...urls,
-                ...DEFAULT_IMAGE_URLS,
-            ].slice(0, 2);
+            urls = [...urls, ...DEFAULT_IMAGE_URLS].slice(0, 2);
         }
         imageUrls.value = urls;
     };
@@ -216,7 +183,8 @@ const useImages = () => {
 const useGrayOutput = ({ imageRefs, imageSize }) => {
     const grayCavans = ref([]);
     const hasGrayOutput = ref(false);
-    const calculateGray = (r, g, b) => parseInt(r * 0.299 + g * 0.587 + b * 0.114);
+    const calculateGray = (r, g, b) =>
+        parseInt(r * 0.299 + g * 0.587 + b * 0.114);
 
     const imageToGray = (canvas) => {
         const ctx = canvas.getContext('2d');
@@ -237,15 +205,35 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
             }
         }
         ctx.putImageData(data, 0, 0);
-    }
+    };
 
     const setGrayOutput = () => {
         const [image1, image2] = imageRefs.value;
         const [canvas1, canvas2] = grayCavans.value;
         const ctx1 = canvas1.getContext('2d');
         const ctx2 = canvas2.getContext('2d');
-        ctx1.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
-        ctx2.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
+        ctx1.drawImage(
+            image1,
+            0,
+            0,
+            image1.naturalWidth,
+            image1.naturalHeight,
+            0,
+            0,
+            imageSize.value,
+            imageSize.value
+        );
+        ctx2.drawImage(
+            image2,
+            0,
+            0,
+            image2.naturalWidth,
+            image2.naturalHeight,
+            0,
+            0,
+            imageSize.value,
+            imageSize.value
+        );
         imageToGray(canvas1);
         imageToGray(canvas2);
         hasGrayOutput.value = true;
@@ -255,12 +243,13 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
         hasGrayOutput,
         setGrayOutput,
     };
-}
+};
 
 // 极值化输出
 const useExtremumOutput = ({ grayCavans }) => {
     const extremumCanvas = ref([]);
     const hashData = ref([]);
+
     // 像素平均值去图片阈值
     const average = (imageData) => {
         let sum = 0;
@@ -271,52 +260,51 @@ const useExtremumOutput = ({ grayCavans }) => {
             sum += r + g + b;
         }
         return Math.round(sum / imageData.length);
-    }
+    };
 
     // 大津法取图片阈值
-     const otsu = (imageData) => {
-        let ptr = 0
-        let histData = Array(256).fill(0) // 记录0-256每个灰度值的数量，初始值为0
-        let total = imageData.length
+    const otsu = (imageData) => {
+        let ptr = 0;
+        let histData = Array(256).fill(0); // 记录0-256每个灰度值的数量，初始值为0
+        let total = imageData.length;
 
         while (ptr < total) {
             let h = imageData[ptr++];
-            histData[h]++
+            histData[h]++;
         }
 
-        let sum = 0        // 总数(灰度值x数量)
+        let sum = 0; // 总数(灰度值x数量)
         for (let i = 0; i < 256; i++) {
-            sum += i * histData[i]
+            sum += i * histData[i];
         }
 
-
-        let wB = 0         // 背景（小于阈值）的数量
-        let wF = 0         // 前景（大于阈值）的数量
-        let sumB = 0       // 背景图像（灰度x数量）总和
-        let varMax = 0     // 存储最大类间方差值
-        let threshold = 0  // 阈值
+        let wB = 0; // 背景（小于阈值）的数量
+        let wF = 0; // 前景（大于阈值）的数量
+        let sumB = 0; // 背景图像（灰度x数量）总和
+        let varMax = 0; // 存储最大类间方差值
+        let threshold = 0; // 阈值
 
         for (let t = 0; t < 256; t++) {
-            wB += histData[t]       // 背景（小于阈值）的数量累加
-            if (wB === 0) continue
-            wF = total - wB         // 前景（大于阈值）的数量累加
-            if (wF === 0) break
+            wB += histData[t]; // 背景（小于阈值）的数量累加
+            if (wB === 0) continue;
+            wF = total - wB; // 前景（大于阈值）的数量累加
+            if (wF === 0) break;
 
-            sumB += t * histData[t] // 背景（灰度x数量）累加
+            sumB += t * histData[t]; // 背景（灰度x数量）累加
 
-            let mB = sumB / wB          // 背景（小于阈值）的平均灰度
-            let mF = (sum - sumB) / wF  // 前景（大于阈值）的平均灰度
+            let mB = sumB / wB; // 背景（小于阈值）的平均灰度
+            let mF = (sum - sumB) / wF; // 前景（大于阈值）的平均灰度
 
-            let varBetween = wB * wF * (mB - mF) ** 2  // 类间方差
+            let varBetween = wB * wF * (mB - mF) ** 2; // 类间方差
 
             if (varBetween > varMax) {
-                varMax = varBetween
-                threshold = t
+                varMax = varBetween;
+                threshold = t;
             }
         }
 
-        return threshold
-    }
+        return threshold;
+    };
 
     const imageBinaryzationOutput = (canvas, imageData, threshold) => {
         const { width, height, data } = imageData;
@@ -336,24 +324,42 @@ const useExtremumOutput = ({ grayCavans }) => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.putImageData(imageData, 0, 0);
         return hash;
-    }
+    };
 
     const getCanvasImageData = () => {
         const [grayCanvas1, grayCanvas2] = grayCavans.value;
         const ctx1 = grayCanvas1.getContext('2d');
         const ctx2 = grayCanvas2.getContext('2d');
-        const imageData1 = ctx1.getImageData(0, 0, grayCanvas1.width, grayCanvas1.height);
-        const imageData2 = ctx2.getImageData(0, 0, grayCanvas2.width, grayCanvas2.height);
+        const imageData1 = ctx1.getImageData(
+            0,
+            0,
+            grayCanvas1.width,
+            grayCanvas1.height
+        );
+        const imageData2 = ctx2.getImageData(
+            0,
+            0,
+            grayCanvas2.width,
+            grayCanvas2.height
+        );
         return [imageData1, imageData2];
-    }
+    };
 
     const setAverageOutput = () => {
         const [imageData1, imageData2] = getCanvasImageData();
         const threshold1 = average(imageData1.data);
         const threshold2 = average(imageData2.data);
         const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
-        const hash1 = imageBinaryzationOutput(extremumCanvas1, imageData1, threshold1);
-        const hash2 = imageBinaryzationOutput(extremumCanvas2, imageData2, threshold2);
+        const hash1 = imageBinaryzationOutput(
+            extremumCanvas1,
+            imageData1,
+            threshold1
+        );
+        const hash2 = imageBinaryzationOutput(
+            extremumCanvas2,
+            imageData2,
+            threshold2
+        );
         hashData.value = [hash1, hash2];
     };
 
@@ -362,8 +368,16 @@ const useExtremumOutput = ({ grayCavans }) => {
         const threshold1 = otsu(imageData1.data);
         const threshold2 = otsu(imageData2.data);
         const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
-        const hash1 = imageBinaryzationOutput(extremumCanvas1, imageData1, threshold1);
-        const hash2 = imageBinaryzationOutput(extremumCanvas2, imageData2, threshold2);
+        const hash1 = imageBinaryzationOutput(
+            extremumCanvas1,
+            imageData1,
+            threshold1
+        );
+        const hash2 = imageBinaryzationOutput(
+            extremumCanvas2,
+            imageData2,
+            threshold2
+        );
         hashData.value = [hash1, hash2];
     };
 
@@ -373,7 +387,7 @@ const useExtremumOutput = ({ grayCavans }) => {
         setOtsuOutput,
         hashData,
     };
-}
+};
 
 const useImageHash = (hashData) => {
     const compareHashInfo = ref('');
@@ -386,13 +400,15 @@ const useImageHash = (hashData) => {
             count += it ^ hash2[index];
         });
 
-        compareHashInfo.value = `差异: ${count}, 相似度: ${(hash1.length - count) / hash1.length * 100}%`;
+        compareHashInfo.value = `差异: ${count}, 相似度: ${
+            ((hash1.length - count) / hash1.length) * 100
+        }%`;
         console.log(compareHashInfo.value);
     });
     return {
         compareHashInfo,
     };
-}
+};
 
 const useColorHistogram = ({ imageRefs, imageSize }) => {
     const compareColorInfo = ref('');
@@ -403,7 +419,7 @@ const useColorHistogram = ({ imageRefs, imageSize }) => {
         canvas.width = imageSize.value;
         canvas.height = imageSize.value;
         return canvas;
-    }
+    };
 
     const getImageData = () => {
         const canvas1 = createCanvas();
@@ -411,12 +427,42 @@ const useColorHistogram = ({ imageRefs, imageSize }) => {
         const [image1, image2] = imageRefs.value;
         const ctx1 = canvas1.getContext('2d');
         const ctx2 = canvas2.getContext('2d');
-        ctx1.drawImage(image1, 0, 0, image1.naturalWidth, image1.naturalHeight, 0, 0, imageSize.value, imageSize.value);
-        ctx2.drawImage(image2, 0, 0, image2.naturalWidth, image2.naturalHeight, 0, 0, imageSize.value, imageSize.value);
-        const imageData1 = ctx1.getImageData(0, 0, canvas1.width, canvas1.height);
-        const imageData2 = ctx2.getImageData(0, 0, canvas2.width, canvas2.height);
+        ctx1.drawImage(
+            image1,
+            0,
+            0,
+            image1.naturalWidth,
+            image1.naturalHeight,
+            0,
+            0,
+            imageSize.value,
+            imageSize.value
+        );
+        ctx2.drawImage(
+            image2,
+            0,
+            0,
+            image2.naturalWidth,
+            image2.naturalHeight,
+            0,
+            0,
+            imageSize.value,
+            imageSize.value
+        );
+        const imageData1 = ctx1.getImageData(
+            0,
+            0,
+            canvas1.width,
+            canvas1.height
+        );
+        const imageData2 = ctx2.getImageData(
+            0,
+            0,
+            canvas2.width,
+            canvas2.height
+        );
         return [imageData1, imageData2];
-    }
+    };
 
     const getColors = (data, chunk = 4) => {
         const chunkSize = 256 / chunk;
@@ -426,21 +472,24 @@ const useColorHistogram = ({ imageRefs, imageSize }) => {
             for (let y = 0; y < data.height; y++) {
                 const idx = (x + y * data.width) * 4;
                 // The RGB values
-                const r = Math.round((data.data[idx + 0] + halfSize) / chunkSize) - 1;
-                const g = Math.round((data.data[idx + 1] + halfSize) / chunkSize) - 1;
-                const b = Math.round((data.data[idx + 2] + halfSize) / chunkSize) - 1;
+                const r =
+                    Math.round((data.data[idx + 0] + halfSize) / chunkSize) - 1;
+                const g =
+                    Math.round((data.data[idx + 1] + halfSize) / chunkSize) - 1;
+                const b =
+                    Math.round((data.data[idx + 2] + halfSize) / chunkSize) - 1;
                 const index = r * Math.pow(chunk, 2) + g * chunk + b;
                 colors[index] += 1;
             }
         }
         return colors;
-    }
+    };
 
     const calculateCosine = (d1, d2) => {
         let numerator = 0;
         let denominatorA = 0;
         let denominatorB = 0;
-        for (let i = 0; i < d1.length; i ++) {
+        for (let i = 0; i < d1.length; i++) {
             numerator += d1[i] * d2[i];
             denominatorA += Math.pow(d1[i], 2);
             denominatorB += Math.pow(d2[i], 2);
@@ -449,7 +498,7 @@ const useColorHistogram = ({ imageRefs, imageSize }) => {
     };
 
     const createColorHistogram = () => {
-        const [imageData1, imageData2] = getImageData()
+        const [imageData1, imageData2] = getImageData();
         const colors1 = getColors(imageData1);
         const colors2 = getColors(imageData2);
         colorsList.value = [colors1, colors2];
@@ -462,7 +511,7 @@ const useColorHistogram = ({ imageRefs, imageSize }) => {
         colorsList,
         createColorHistogram,
     };
-}
+};
 
 export default {
     name: 'App',
@@ -573,6 +622,11 @@ export default {
 
             & + .content-item {
                 margin-left: 16px;
+            }
+
+            &.keep-size {
+                width: 256px;
+                height: 128px;
             }
         }
     }
