@@ -15,40 +15,129 @@
             });
     };
 
-    const getImageData = (image) => {
+    const drawToCanvas = (image) => {
         const { naturalWidth: width, naturalHeight: height } = image;
         const canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(image, 0, 0);
-        return ctx.getImageData(0, 0, width, height);
+        return canvas;
+    }
+
+    const canvasToGray = (canvas) => {
+        const ctx = canvas.getContext('2d');
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const calculateGray = (r, g, b) => parseInt(r * 0.299 + g * 0.587 + b * 0.114);
+    
+        for (let x = 0; x < data.width; x++) {
+            for (let y = 0; y < data.height; y++) {
+                const idx = (x + y * data.width) * 4;
+                const r = data.data[idx + 0];
+                const g = data.data[idx + 1];
+                const b = data.data[idx + 2];
+                const gray = calculateGray(r, g, b);
+                data.data[idx + 0] = gray;
+                data.data[idx + 1] = gray;
+                data.data[idx + 2] = gray;
+            }
+        }
+        ctx.putImageData(data, 0, 0);
+        return canvas;
     };
 
-    const compareImage = (imageData1, imageData2) => {
-        const { width, height } = imageData1;
-        // 尺寸不同直接 pass
-        if (imageData2.width !== width || imageData2.height !== height) {
-            return false;
+    const getImageData = (canvas) => {
+        const ctx = canvas.getContext('2d');
+        return ctx.getImageData(0, 0, canvas.width, canvas.height);
+    };
+
+    // 像素平均值去图片阈值
+    const average = (imageData) => {
+        let sum = 0;
+        for (let i = 0; i < imageData.length - 1; i += 4) {
+            const r = imageData[i];
+            const g = imageData[i + 1];
+            const b = imageData[i + 2];
+            sum += r + g + b;
         }
-        // 逐个比较每个像素差异
+        return Math.round(sum / imageData.length);
+    };
+
+    // 大津法取图片阈值
+    const otsu = (imageData) => {
+        let ptr = 0;
+        let histData = Array(256).fill(0); // 记录0-256每个灰度值的数量，初始值为0
+        let total = imageData.length;
+
+        while (ptr < total) {
+            let h = imageData[ptr++];
+            histData[h]++;
+        }
+
+        let sum = 0; // 总数(灰度值x数量)
+        for (let i = 0; i < 256; i++) {
+            sum += i * histData[i];
+        }
+
+        let wB = 0; // 背景（小于阈值）的数量
+        let wF = 0; // 前景（大于阈值）的数量
+        let sumB = 0; // 背景图像（灰度x数量）总和
+        let varMax = 0; // 存储最大类间方差值
+        let threshold = 0; // 阈值
+
+        for (let t = 0; t < 256; t++) {
+            wB += histData[t]; // 背景（小于阈值）的数量累加
+            if (wB === 0) continue;
+            wF = total - wB; // 前景（大于阈值）的数量累加
+            if (wF === 0) break;
+
+            sumB += t * histData[t]; // 背景（灰度x数量）累加
+
+            let mB = sumB / wB; // 背景（小于阈值）的平均灰度
+            let mF = (sum - sumB) / wF; // 前景（大于阈值）的平均灰度
+
+            let varBetween = wB * wF * (mB - mF) ** 2; // 类间方差
+
+            if (varBetween > varMax) {
+                varMax = varBetween;
+                threshold = t;
+            }
+        }
+
+        return threshold;
+    };
+
+    const binaryzationOutput = (imageData, threshold) => {
+        const { width, height, data } = imageData;
+        const hash = [];
         for (let x = 0; x < width; x++) {
             for (let y = 0; y < height; y++) {
                 const idx = (x + y * width) * 4;
-                const dr = imageData1.data[idx + 0] - imageData2.data[idx + 0];
-                const dg = imageData1.data[idx + 1] - imageData2.data[idx + 1];
-                const db = imageData1.data[idx + 2] - imageData2.data[idx + 2];
-                const da = imageData1.data[idx + 3] - imageData2.data[idx + 3];
-                if (dr || dg || db || da) {
-                    return false;
-                }
+                const v = data[idx + 0] > threshold ? 1 : 0;
+                hash.push(v);
             }
         }
-        return true;
+        return hash;
+    }
+
+    const hammingDistance = (hash1, hash2) => {
+        let count = 0;
+        hash1.forEach((it, index) => {
+            count += it ^ hash2[index];
+        });
+        return count;
     };
 
     const image1 = await loadImage('https://xxx.com/pic0.jpeg');
     const image2 = await loadImage('https://xxx.com/pic1.jpeg');
-    const isEqual = compareImage(getImageData(image1), getImageData(image2));
-    console.log('isEqual', isEqual);
+    const canvas1 = canvasToGray(drawToCanvas(image1));
+    const canvas2 = canvasToGray(drawToCanvas(image2));
+    const imageData1 = getImageData(canvas1);
+    const imageData2 = getImageData(canvas2);
+    const threshold1 = otsu(imageData1.data);
+    const threshold2 = otsu(imageData2.data);
+    const hash1 = binaryzationOutput(imageData1, threshold1);
+    const hash2 = binaryzationOutput(imageData2, threshold2);
+    const distance = hammingDistance(hash1, hash2);
+    console.log(`相似度为：${(hash1.length - distance) / hash1.length * 100}%`);
 })();
