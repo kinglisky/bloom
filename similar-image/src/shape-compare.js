@@ -40,6 +40,7 @@
                 data.data[idx + 0] = gray;
                 data.data[idx + 1] = gray;
                 data.data[idx + 2] = gray;
+                data.data[idx + 3] = 255;
             }
         }
         ctx.putImageData(data, 0, 0);
@@ -51,26 +52,24 @@
         return ctx.getImageData(0, 0, canvas.width, canvas.height);
     };
 
-    // 像素平均值去图片阈值
-    const average = (imageData) => {
+    // 像素平均值图片阈值
+    const average = (data) => {
         let sum = 0;
-        for (let i = 0; i < imageData.length - 1; i += 4) {
-            const r = imageData[i];
-            const g = imageData[i + 1];
-            const b = imageData[i + 2];
-            sum += r + g + b;
+        // 因为是灰度图片，取第一通道的值就好
+        for (let i = 0; i < data.length - 1; i += 4) {
+            sum += data[i];
         }
-        return Math.round(sum / imageData.length);
+        return Math.round(sum / (data.length / 4));
     };
 
     // 大津法取图片阈值
-    const otsu = (imageData) => {
+    const otsu = (data) => {
         let ptr = 0;
         let histData = Array(256).fill(0); // 记录0-256每个灰度值的数量，初始值为0
-        let total = imageData.length;
+        let total = data.length;
 
         while (ptr < total) {
-            let h = imageData[ptr++];
+            let h = data[ptr++];
             histData[h]++;
         }
 
@@ -128,8 +127,8 @@
         return count;
     };
 
-    const image1 = await loadImage('https://xxx.com/pic0.jpeg');
-    const image2 = await loadImage('https://xxx.com/pic1.jpeg');
+    const image1 = await loadImage('https://erii.oss-cn-beijing.aliyuncs.com/demo0.jpeg');
+    const image2 = await loadImage('https://erii.oss-cn-beijing.aliyuncs.com/demo1.jpeg');
     const canvas1 = canvasToGray(drawToCanvas(image1));
     const canvas2 = canvasToGray(drawToCanvas(image2));
     const imageData1 = getImageData(canvas1);
@@ -139,5 +138,6 @@
     const hash1 = binaryzationOutput(imageData1, threshold1);
     const hash2 = binaryzationOutput(imageData2, threshold2);
     const distance = hammingDistance(hash1, hash2);
+
     console.log(`相似度为：${(hash1.length - distance) / hash1.length * 100}%`);
 })();

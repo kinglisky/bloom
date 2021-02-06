@@ -251,25 +251,23 @@ const useExtremumOutput = ({ grayCavans }) => {
     const hashData = ref([]);
 
     // 像素平均值去图片阈值
-    const average = (imageData) => {
+    const average = (data) => {
         let sum = 0;
-        for (let i = 0; i < imageData.length - 1; i += 4) {
-            const r = imageData[i];
-            const g = imageData[i + 1];
-            const b = imageData[i + 2];
-            sum += r + g + b;
+        // 因为是灰度图片，取第一通道的值就好
+        for (let i = 0; i < data.length - 1; i += 4) {
+            sum += data[i];
         }
-        return Math.round(sum / imageData.length);
+        return Math.round(sum / (data.length / 4));
     };
 
     // 大津法取图片阈值
-    const otsu = (imageData) => {
+    const otsu = (data) => {
         let ptr = 0;
         let histData = Array(256).fill(0); // 记录0-256每个灰度值的数量，初始值为0
-        let total = imageData.length;
+        let total = data.length;
 
         while (ptr < total) {
-            let h = imageData[ptr++];
+            let h = data[ptr++];
             histData[h]++;
         }
 
