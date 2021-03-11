@@ -29,7 +29,7 @@
         const ctx = canvas.getContext('2d');
         const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const calculateGray = (r, g, b) => parseInt(r * 0.299 + g * 0.587 + b * 0.114);
-    
+        const grayData = [];
         for (let x = 0; x < data.width; x++) {
             for (let y = 0; y < data.height; y++) {
                 const idx = (x + y * data.width) * 4;
@@ -41,10 +41,11 @@
                 data.data[idx + 1] = gray;
                 data.data[idx + 2] = gray;
                 data.data[idx + 3] = 255;
+                grayData.push(gray);
             }
         }
         ctx.putImageData(data, 0, 0);
-        return canvas;
+        return grayData;
     };
 
     const getImageData = (canvas) => {
@@ -112,7 +113,8 @@
         for (let x = 0; x < width; x++) {
             for (let y = 0; y < height; y++) {
                 const idx = (x + y * width) * 4;
-                const v = data[idx + 0] > threshold ? 1 : 0;
+                const avg = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                const v = avg > threshold ? 1 : 0;
                 hash.push(v);
             }
         }
@@ -131,12 +133,10 @@
     const image2 = await loadImage('https://erii.oss-cn-beijing.aliyuncs.com/demo1.jpeg');
     const canvas1 = drawToCanvas(image1);
     const canvas2 = drawToCanvas(image2);
-    const grayCanvas1 = canvasToGray(canvas1);
-    const grayCanvas2 = canvasToGray(canvas2);
-    const imageData1 = getImageData(grayCanvas1);
-    const imageData2 = getImageData(grayCanvas2);
-    const threshold1 = otsu(imageData1.data);
-    const threshold2 = otsu(imageData2.data);
+    const grayData1 = canvasToGray(canvas1);
+    const grayData2 = canvasToGray(canvas2);
+    const threshold1 = otsu(grayData1);
+    const threshold2 = otsu(grayData2);
     const hash1 = binaryzationOutput(getImageData(canvas1), threshold1);
     const hash2 = binaryzationOutput(getImageData(canvas2), threshold2);
     const distance = hammingDistance(hash1, hash2);

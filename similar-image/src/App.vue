@@ -183,21 +183,22 @@ const useImages = () => {
 const useGrayOutput = ({ imageRefs, imageSize }) => {
     const grayCavans = ref([]);
     const hasGrayOutput = ref(false);
-    const originDatas = ref([]);
+    const canvasData = ref([]);
     const calculateGray = (r, g, b) =>
         parseInt(r * 0.299 + g * 0.587 + b * 0.114);
 
     const imageToGray = (canvas) => {
         const ctx = canvas.getContext('2d');
-        const origin = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = new ImageData(origin.width, origin.height);
-        for (let x = 0; x < origin.width; x++) {
-            for (let y = 0; y < origin.height; y++) {
-                const idx = (x + y * origin.width) * 4;
+        const originData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const grayData = [];
+        const data = new ImageData(originData.width, originData.height);
+        for (let x = 0; x < originData.width; x++) {
+            for (let y = 0; y < originData.height; y++) {
+                const idx = (x + y * originData.width) * 4;
                 // The RGB values
-                const r = origin.data[idx + 0];
-                const g = origin.data[idx + 1];
-                const b = origin.data[idx + 2];
+                const r = originData.data[idx + 0];
+                const g = originData.data[idx + 1];
+                const b = originData.data[idx + 2];
 
                 //更新图像数据
                 const gray = calculateGray(r, g, b);
@@ -205,10 +206,11 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
                 data.data[idx + 1] = gray;
                 data.data[idx + 2] = gray;
                 data.data[idx + 3] = 255;
+                grayData.push(gray);
             }
         }
         ctx.putImageData(data, 0, 0);
-        return origin;
+        return { originData, grayData };
     };
 
     const setGrayOutput = () => {
@@ -238,20 +240,22 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
             imageSize.value,
             imageSize.value
         );
-        originDatas.value.push(imageToGray(canvas1));
-        originDatas.value.push(imageToGray(canvas2));
+        canvasData.value = [
+            imageToGray(canvas1),
+            imageToGray(canvas2),
+        ];
         hasGrayOutput.value = true;
     };
     return {
         grayCavans,
-        originDatas,
+        canvasData,
         hasGrayOutput,
         setGrayOutput,
     };
 };
 
 // 极值化输出
-const useExtremumOutput = ({ grayCavans, originDatas }) => {
+const useExtremumOutput = ({ canvasData }) => {
     const extremumCanvas = ref([]);
     const hashData = ref([]);
 
@@ -329,56 +333,37 @@ const useExtremumOutput = ({ grayCavans, originDatas }) => {
         return hash;
     };
 
-    const getCanvasImageData = () => {
-        const [grayCanvas1, grayCanvas2] = grayCavans.value;
-        const ctx1 = grayCanvas1.getContext('2d');
-        const ctx2 = grayCanvas2.getContext('2d');
-        const imageData1 = ctx1.getImageData(
-            0,
-            0,
-            grayCanvas1.width,
-            grayCanvas1.height
-        );
-        const imageData2 = ctx2.getImageData(
-            0,
-            0,
-            grayCanvas2.width,
-            grayCanvas2.height
-        );
-        return [imageData1, imageData2];
-    };
-
     const setAverageOutput = () => {
-        const [imageData1, imageData2] = getCanvasImageData();
-        const threshold1 = average(imageData1.data);
-        const threshold2 = average(imageData2.data);
+        const threshold1 = average(canvasData.value[0].grayData);
+        const threshold2 = average(canvasData.value[1].grayData);
+        console.log(threshold1, threshold2);
         const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
         const hash1 = imageBinaryzationOutput(
             extremumCanvas1,
-            originDatas.value[0],
+            canvasData.value[0].originData,
             threshold1
         );
         const hash2 = imageBinaryzationOutput(
             extremumCanvas2,
-            originDatas.value[1],
+            canvasData.value[1].originData,
             threshold2
         );
         hashData.value = [hash1, hash2];
     };
 
     const setOtsuOutput = () => {
-        const [imageData1, imageData2] = getCanvasImageData();
-        const threshold1 = otsu(imageData1.data);
-        const threshold2 = otsu(imageData2.data);
+        const threshold1 = otsu(canvasData.value[0].grayData);
+        const threshold2 = otsu(canvasData.value[1].grayData);
+        console.log(threshold1, threshold2);
         const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
         const hash1 = imageBinaryzationOutput(
             extremumCanvas1,
-            originDatas.value[0],
+            canvasData.value[0].originData,
             threshold1
         );
         const hash2 = imageBinaryzationOutput(
             extremumCanvas2,
-            originDatas.value[1],
+            canvasData.value[1].originData,
             threshold2
         );
         hashData.value = [hash1, hash2];
