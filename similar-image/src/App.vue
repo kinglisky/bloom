@@ -183,28 +183,32 @@ const useImages = () => {
 const useGrayOutput = ({ imageRefs, imageSize }) => {
     const grayCavans = ref([]);
     const hasGrayOutput = ref(false);
+    const originDatas = ref([]);
     const calculateGray = (r, g, b) =>
         parseInt(r * 0.299 + g * 0.587 + b * 0.114);
 
     const imageToGray = (canvas) => {
         const ctx = canvas.getContext('2d');
-        const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        for (let x = 0; x < data.width; x++) {
-            for (let y = 0; y < data.height; y++) {
-                const idx = (x + y * data.width) * 4;
+        const origin = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = new ImageData(origin.width, origin.height);
+        for (let x = 0; x < origin.width; x++) {
+            for (let y = 0; y < origin.height; y++) {
+                const idx = (x + y * origin.width) * 4;
                 // The RGB values
-                const r = data.data[idx + 0];
-                const g = data.data[idx + 1];
-                const b = data.data[idx + 2];
+                const r = origin.data[idx + 0];
+                const g = origin.data[idx + 1];
+                const b = origin.data[idx + 2];
 
                 //更新图像数据
                 const gray = calculateGray(r, g, b);
                 data.data[idx + 0] = gray;
                 data.data[idx + 1] = gray;
                 data.data[idx + 2] = gray;
+                data.data[idx + 3] = 255;
             }
         }
         ctx.putImageData(data, 0, 0);
+        return origin;
     };
 
     const setGrayOutput = () => {
@@ -234,19 +238,20 @@ const useGrayOutput = ({ imageRefs, imageSize }) => {
             imageSize.value,
             imageSize.value
         );
-        imageToGray(canvas1);
-        imageToGray(canvas2);
+        originDatas.value.push(imageToGray(canvas1));
+        originDatas.value.push(imageToGray(canvas2));
         hasGrayOutput.value = true;
     };
     return {
         grayCavans,
+        originDatas,
         hasGrayOutput,
         setGrayOutput,
     };
 };
 
 // 极值化输出
-const useExtremumOutput = ({ grayCavans }) => {
+const useExtremumOutput = ({ grayCavans, originDatas }) => {
     const extremumCanvas = ref([]);
     const hashData = ref([]);
 
@@ -310,12 +315,12 @@ const useExtremumOutput = ({ grayCavans }) => {
         for (let x = 0; x < width; x++) {
             for (let y = 0; y < height; y++) {
                 const idx = (x + y * canvas.width) * 4;
-                const v = data[idx + 0] > threshold ? 255 : 0;
+                const avg = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+                const v = avg > threshold ? 255 : 0;
                 data[idx] = v;
                 data[idx + 1] = v;
                 data[idx + 2] = v;
                 hash.push(v > 0 ? 1 : 0);
-                // data[idx + 3] = data[idx + 3];
             }
         }
         const ctx = canvas.getContext('2d');
@@ -350,12 +355,12 @@ const useExtremumOutput = ({ grayCavans }) => {
         const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
         const hash1 = imageBinaryzationOutput(
             extremumCanvas1,
-            imageData1,
+            originDatas.value[0],
             threshold1
         );
         const hash2 = imageBinaryzationOutput(
             extremumCanvas2,
-            imageData2,
+            originDatas.value[1],
             threshold2
         );
         hashData.value = [hash1, hash2];
@@ -368,12 +373,12 @@ const useExtremumOutput = ({ grayCavans }) => {
         const [extremumCanvas1, extremumCanvas2] = extremumCanvas.value;
         const hash1 = imageBinaryzationOutput(
             extremumCanvas1,
-            imageData1,
+            originDatas.value[0],
             threshold1
         );
         const hash2 = imageBinaryzationOutput(
             extremumCanvas2,
-            imageData2,
+            originDatas.value[1],
             threshold2
         );
         hashData.value = [hash1, hash2];

@@ -129,14 +129,16 @@
 
     const image1 = await loadImage('https://erii.oss-cn-beijing.aliyuncs.com/demo0.jpeg');
     const image2 = await loadImage('https://erii.oss-cn-beijing.aliyuncs.com/demo1.jpeg');
-    const canvas1 = canvasToGray(drawToCanvas(image1));
-    const canvas2 = canvasToGray(drawToCanvas(image2));
-    const imageData1 = getImageData(canvas1);
-    const imageData2 = getImageData(canvas2);
+    const canvas1 = drawToCanvas(image1);
+    const canvas2 = drawToCanvas(image2);
+    const grayCanvas1 = canvasToGray(canvas1);
+    const grayCanvas2 = canvasToGray(canvas2);
+    const imageData1 = getImageData(grayCanvas1);
+    const imageData2 = getImageData(grayCanvas2);
     const threshold1 = otsu(imageData1.data);
     const threshold2 = otsu(imageData2.data);
-    const hash1 = binaryzationOutput(imageData1, threshold1);
-    const hash2 = binaryzationOutput(imageData2, threshold2);
+    const hash1 = binaryzationOutput(getImageData(canvas1), threshold1);
+    const hash2 = binaryzationOutput(getImageData(canvas2), threshold2);
     const distance = hammingDistance(hash1, hash2);
 
     console.log(`相似度为：${(hash1.length - distance) / hash1.length * 100}%`);
