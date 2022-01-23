@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Foucs Outside</title>
+        <style>
+            * {
+                padding: 0;
+                margin: 0;
+                box-sizing: border-box;
+            }
+            html {
+                width: 100%;
+                height: 100%;
+            }
+
+            body {
+                width: 100vw;
+                height: 100vh;
+                display: flex;
+                justify-content: center;
+                flex-direction: column;
+            }
+
+            button {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 160px;
+                height: 60px;
+                line-height: 60px;
+            }
+
+            .modal {
+                display: block;
+                width: 300px;
+                height: 200px;
+                border: 1px solid #000;
+                border-radius: 6px;
+            }
+
+            .outside {
+                width: 300px;
+                height: 200px;
+                border: 1px solid #000;
+                margin-top: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="modal">
+            <!-- 弹窗内部包含 input 元素 -->
+            <input type="file" />
+            <!-- 弹窗内部包含 iframe 元素 -->
+            <iframe width="300" height="200"></iframe>
+        </div>
+        <script>
+            function createFouceOutside(target, callback) {
+                target.setAttribute('tabIndex', '-1');
+
+                let blurTimer = null;
+                // 弹窗聚焦，取消关闭弹窗
+                function onTargetFocus() {
+                    clearTimeout(blurTimer);
+                }
+                // 弹窗失焦，关闭弹窗
+                function onTargetBlur() {
+                    blurTimer = setTimeout(() => callback());
+                }
+                // 窗口失焦，判断是否需要取消关闭弹窗
+                function onWindowBlur() {
+                    if (target.contains(document.activeElement)) {
+                        onTargetFocus();
+                    }
+                }
+                // 窗口聚焦，判断是否需要关闭弹窗
+                function onWindowFocus() {
+                    if (!target.contains(document.activeElement)) {
+                        onTargetBlur();
+                    }
+                }
+                target.addEventListener('focus', onTargetFocus, true);
+                target.addEventListener('blur', onTargetBlur, true);
+                window.addEventListener('blur', onWindowBlur);
+                window.addEventListener('focus', onWindowFocus);
+                // 弹窗打开时自动获取焦点
+                setTimeout(() => {
+                    target.focus();
+                });
+                // 返回一个销毁事件函数
+                return () => {
+                    target.removeEventListener('focus', onTargetFocus, true);
+                    target.removeEventListener('blur', onTargetBlur, true);
+                    window.removeEventListener('blur', onWindowBlur);
+                    window.removeEventListener('focus', onWindowFocus);
+                };
+            }
+            const model = document.querySelector('.modal');
+
+            function toggle(open) {
+                model.style.display = open ? 'block' : 'none';
+            }
+            createFouceOutside(model, () => {
+                toggle(false);
+            });
+        </script>
+    </body>
+</html>
